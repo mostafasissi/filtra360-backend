@@ -1,0 +1,135 @@
+{
+  "info": {
+    "_postman_id": "fitra360-onboarding-steps-collection",
+    "name": "Fitra360 Onboarding Steps",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Step 1 - Basic Info",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer <your_jwt_token>", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/users/update-profile",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "users", "update-profile"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Erwin Prihartono\",\n  \"dateOfBirth\": \"1998-03-14\",\n  \"sexAtBirth\": \"Male\",\n  \"height\": 180,\n  \"heightUnit\": \"cm\",\n  \"weight\": 65,\n  \"weightUnit\": \"kg\",\n  \"location\": \"Indonesia\",\n  \"step\": 1\n}"
+        }
+      }
+    },
+    {
+      "name": "Step 2 - Metabolic Measurements",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer <your_jwt_token>", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/users/update-profile",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "users", "update-profile"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"waistCircumference\": 80,\n  \"chestCircumference\": 95,\n  \"armCircumference\": 32,\n  \"circumferenceUnit\": \"cm\",\n  \"step\": 2\n}"
+        }
+      }
+    },
+    {
+      "name": "Step 3 - Lifestyle & Habits",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer <your_jwt_token>", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/users/update-profile",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "users", "update-profile"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dietType\": \"Omnivore\",\n  \"exerciseLevel\": \"Moderate\",\n  \"sleepQuality\": \"Good\",\n  \"smokes\": false,\n  \"drinksAlcohol\": \"Occasionally\",\n  \"step\": 3\n}"
+        }
+      }
+    },
+    {
+      "name": "Step 4 - Symptoms",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer <your_jwt_token>", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/users/update-profile",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "users", "update-profile"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"symptoms\": [\n    \"Low libido\",\n    \"Fatigue\",\n    \"Mood changes\",\n    \"Hot flashes\",\n    \"Sleep disturbances\"\n  ],\n  \"step\": 4\n}"
+        }
+      }
+    },
+    {
+      "name": "Step 5 - Health Goals",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer <your_jwt_token>", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/users/update-profile",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "users", "update-profile"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"goals\": [\n    \"Increase energy\",\n    \"Boost immunity\",\n    \"Support longevity\"\n  ],\n  \"step\": 5\n}"
+        }
+      }
+    },
+    {
+      "name": "Step 6 - Optional Uploads",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer <your_jwt_token>", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/v1/users/update-profile",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "users", "update-profile"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"uploads\": [\n    {\n      \"type\": \"DNA\",\n      \"fileUrl\": \"https://example.com/dna.pdf\"\n    },\n    {\n      \"type\": \"Blood Work\",\n      \"fileUrl\": \"https://example.com/bloodwork.pdf\"\n    },\n    {\n      \"type\": \"Supplements\",\n      \"fileUrl\": \"https://example.com/supplements.pdf\"\n    }\n  ],\n  \"step\": 6\n}"
+        }
+      }
+    }
+  ]
+} 
