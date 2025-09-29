@@ -249,7 +249,7 @@ DATA FORMAT HANDLING:
 REQUIRED OUTPUT FORMAT:
 {
   "meta": {
-    "engine": "GPT-3.5-Turbo",
+    "engine": "GPT-4o",
     "framework": "Fitra360 DNA",
     "version": "1.0.0",
     "generatedAt": "2025-01-15T10:30:00Z",
@@ -433,7 +433,7 @@ const processWithChatGPT = async (text, promptType, customPrompt = null, useEnha
     console.log('Prompt template:', prompt);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-5",
       messages: [
         {
           role: "system",
@@ -444,13 +444,15 @@ const processWithChatGPT = async (text, promptType, customPrompt = null, useEnha
           content: (promptType === 'DASHBOARD_SUMMARY' || promptType === 'DASHBOARD_SUMMARY_ENHANCED') ? text : `${prompt}\n\nText to analyze: ${text}`
         }
       ],
-      temperature: 0.3,
-      max_tokens: 2000,
+      max_completion_tokens: 4000,
       response_format: { type: "json_object" }
     });
 
+
+
     // Get the response content
     const responseContent = completion.choices[0].message.content;
+    console.log("==============================================================================");
     console.log('Raw ChatGPT response:', responseContent);
     
     // Parse the JSON response
@@ -2022,13 +2024,12 @@ ${JSON.stringify(symptomSummary)}
       console.log('User context:', { userName, age: profile.dateOfBirth ? (new Date().getFullYear() - new Date(profile.dateOfBirth).getFullYear()) : 'Unknown' });
       
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-5",
       messages: [
-          { role: "system", content: "You are a health assistant that returns only valid JSON. Never include double nesting. Always analyze real data and provide personalized recommendations based on the user's actual profile, DNA, blood work, and symptoms." },
+        { role: "system", content: "You are a health assistant that returns only valid JSON. Never include double nesting. Always analyze real data and provide personalized recommendations based on the user's actual profile, DNA, blood work, and symptoms." },
         { role: "user", content: prompt }
       ],
-      temperature: 0.3,
-        max_tokens: 4000,
+      max_completion_tokens: 4000,
       response_format: { type: "json_object" }
     });
 

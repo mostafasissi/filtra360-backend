@@ -122,7 +122,7 @@ class UserController {
 
     console.log("Processing image for user:", req.user.id);
     const { useEnhancedPrompts = false, ...requestData } = req.body;
-    const result = await UserService.processImage({ ...requestData, userId: req.user.id, useEnhancedPrompts });
+    const result = await UserService.processImage({ ...requestData, userId: req.user?.id, useEnhancedPrompts });
     return res.status(200).json(result);
   });
 
@@ -150,14 +150,14 @@ class UserController {
     const result = await UserService.processImage({ 
       ...otherData, 
       promptType, 
-      userId: req.user.id, 
+      userId: req.user?.id, 
       useEnhancedPrompts: true 
     });
     return res.status(200).json(result);
   });
 
   static saveAnalysisData = catchAsyncHandler(async (req, res) => {
-    const { id } = req.user; // Get user id from token
+    const id = req.user?.id; // Get user id from token if available
     const result = await UserService.saveAnalysisData(id, req.body);
     return res.status(result.success ? 200 : 400).json(result);
   });
