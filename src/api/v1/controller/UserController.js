@@ -1,4 +1,5 @@
 const UserService = require("../services/user.service");
+const DNAService = require("../services/dna.service");
 const catchAsyncHandler = require("../utils/catchAsyncHandler");
 
 class UserController {
@@ -181,6 +182,86 @@ class UserController {
     console.log("id", id);
     const result = await UserService.generatePersonalizedPlan(id);
     return res.status(200).json({ success: true, data: result });
+  });
+
+  // DNA-specific API endpoints
+  static addDnaData = catchAsyncHandler(async (req, res) => {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required"
+      });
+    }
+
+    console.log("Adding DNA data for user:", req.user.id);
+    const result = await DNAService.addDnaData(req.user.id, req.body);
+    return res.status(result.success ? 201 : 400).json(result);
+  });
+
+  static getDnaData = catchAsyncHandler(async (req, res) => {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required"
+      });
+    }
+
+    console.log("Getting DNA data for user:", req.user.id);
+    const result = await DNAService.getDnaData(req.user.id);
+    return res.status(result.success ? 200 : 400).json(result);
+  });
+
+  static updateDnaData = catchAsyncHandler(async (req, res) => {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required"
+      });
+    }
+
+    console.log("Updating DNA data for user:", req.user.id);
+    const result = await DNAService.updateDnaData(req.user.id, req.body);
+    return res.status(result.success ? 200 : 400).json(result);
+  });
+
+  static deleteDnaData = catchAsyncHandler(async (req, res) => {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required"
+      });
+    }
+
+    console.log("Deleting DNA data for user:", req.user.id);
+    const result = await DNAService.deleteDnaData(req.user.id);
+    return res.status(result.success ? 200 : 400).json(result);
+  });
+
+  static getDnaStatistics = catchAsyncHandler(async (req, res) => {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required"
+      });
+    }
+
+    console.log("Getting DNA statistics for user:", req.user.id);
+    const result = await DNAService.getDnaStatistics(req.user.id);
+    return res.status(result.success ? 200 : 400).json(result);
+  });
+
+  static analyzeDna = catchAsyncHandler(async (req, res) => {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required"
+      });
+    }
+
+    console.log("Analyzing DNA for user:", req.user.id);
+
+    const result = await UserService.analyzeDna(req.user.id);
+    return res.status(result.success ? 200 : 400).json(result);
   });
 
 }

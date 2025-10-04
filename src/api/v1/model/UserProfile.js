@@ -222,35 +222,34 @@ const userProfileSchema = new mongoose.Schema(
             }
         }],
 
-        // DNA Analysis Data
-        dnaAnalysis: {
+        // DNA Data
+        dna: {
             markers: [{
                 rs_number: {
                     type: String,
                     required: true,
                     trim: true
                 },
-                value: {
+                chromosome: {
                     type: String,
                     required: true,
                     trim: true
                 },
-                category: {
+                position: {
                     type: String,
                     trim: true
                 },
-                interpretation: {
+                allele1: {
                     type: String,
                     trim: true
                 },
-                notes: {
+                allele2: {
                     type: String,
                     trim: true
                 }
             }],
             metadata: {
                 total_markers_found: Number,
-                analysis_date: Date,
                 last_updated: {
                     type: Date,
                     default: Date.now
