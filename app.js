@@ -26,6 +26,7 @@ if (process.env.NODE_ENV === "PRODUCTION") {
 
 const usersRoutes = require("./src/api/v1/routes/user");
 const cronRoutes = require("./src/api/v1/routes/cron");
+const bloodRoutes = require("./src/api/v1/routes/blood");
 const app = express();
 //const admin = require("firebase-admin");
 
@@ -93,6 +94,7 @@ app.use(cookieParser());
 // Routes
 app.use("/api/v1/users", usersRoutes);
 app.use("/api/v1/cron", cronRoutes);
+app.use("/api/v1/blood", bloodRoutes);
 
 app.post("/upload-image", async (req, res) => {
   try {

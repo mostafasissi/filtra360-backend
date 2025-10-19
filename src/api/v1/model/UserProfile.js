@@ -257,60 +257,27 @@ const userProfileSchema = new mongoose.Schema(
             }
         },
 
-        // Blood Report Data
         bloodReport: {
-            patient_info: {
-                name: String,
-                id: String,
-                date: Date
-            },
-            results: {
-                cbc: [{
-                    test_name: String,
-                    value: String,
-                    unit: String,
-                    reference_range: String,
-                    status: String
-                }],
-                chemistry: [{
-                    test_name: String,
-                    value: String,
-                    unit: String,
-                    reference_range: String,
-                    status: String
-                }],
-                lipids: [{
-                    test_name: String,
-                    value: String,
-                    unit: String,
-                    reference_range: String,
-                    status: String
-                }],
-                hormones: [{
-                    test_name: String,
-                    value: String,
-                    unit: String,
-                    reference_range: String,
-                    status: String
-                }],
-                vitamins: [{
-                    test_name: String,
-                    value: String,
-                    unit: String,
-                    reference_range: String,
-                    status: String
-                }],
-                other: [{
-                    test_name: String,
-                    value: String,
-                    unit: String,
-                    reference_range: String,
-                    status: String
+            analysis: {
+                title: String,
+                dateAnalyzed: String,
+                summary: String,
+                categories: [{
+                    name: String,
+                    markers: [{
+                        marker: String,
+                        value: String,
+                        unit: String,
+                        optimalRange: String,
+                        clinicalRange: String
+                    }],
+                    summary: String,
+                    insight: String
                 }]
             },
             metadata: {
                 total_tests: Number,
-                report_date: Date,
+                report_date: String,
                 lab_name: String,
                 last_updated: {
                     type: Date,
