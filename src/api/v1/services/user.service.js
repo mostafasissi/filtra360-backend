@@ -20,6 +20,7 @@ const {
   PROMPT_TEMPLATES,
   ENHANCED_PROMPT_TEMPLATES,
   TARGET_DNA_MARKERS,
+  FITRA360_PROMPT3,
 } = require("../utils/constants");
 const DNAService = require("./dna.service");
 
@@ -1765,408 +1766,95 @@ class UserService {
 
   static async generatePersonalizedPlan(userId) {
     try {
-      const profile = await UserProfile.findOne({ userId });
-      if (!profile) throw new Error("User profile not found");
+      console.log(`[UserService.generatePersonalizedPlan] Starting plan generation for userId: ${userId}`);
+      
+      // Gather the 3 required data sources
+      const planData = await UserService.gatherPersonalizedPlanData(userId);
+      
+      // Build the input data structure for the new prompt
+      const inputData = {
+        dnaAnalysis: planData.dnaAnalysis,
+        bloodWorkAnalysis: planData.bloodWorkAnalysis,
+        userProfile: planData.userProfile
+      };
 
-      // Get user data for context
-      const user = await User.findById(userId);
-      const userName = user?.fullName || "User";
+      // Create the prompt with the new FITRA360_PROMPT3 template and input data
+      const prompt = `${FITRA360_PROMPT3}
 
-      // Prepare supplements/medicines dynamically
-      const supplements = (profile.supplementsAndMedications || []).map(
-        (sup) => ({
-          name: sup.name,
-          dosage: sup.dosage || "",
-          timing: sup.timing || "",
-          reason: sup.purpose || "",
-        })
-      );
-
-      // Prepare DNA, blood, and symptom data with better structure
-      const dnaReport = profile.dnaAnalysis || {};
-      const bloodReport = profile.bloodReport || {};
-
-      // For symptoms, use dailyLogs or a summary if available
-      let symptomSummary = {};
-      if (Array.isArray(profile.dailyLogs) && profile.dailyLogs.length > 0) {
-        // Example: summarize last 30 days
-        const last30 = profile.dailyLogs.slice(-30);
-        const symptoms = {};
-        last30.forEach((log) => {
-          (log.symptoms || []).forEach((sym) => {
-            if (!symptoms[sym.name]) symptoms[sym.name] = [];
-            symptoms[sym.name].push(sym.severity);
-          });
-        });
-        symptomSummary = { logs: last30, summary: symptoms };
-      }
-
-      // Build comprehensive prompt matching exact UI structure
-      const prompt = `You are a health assistant. Analyze the following user data and generate a comprehensive JSON object that matches the exact UI structure needed for the Fitra360 app screens.
-
-IMPORTANT: Return ONLY the JSON object with this EXACT structure (NO DOUBLE NESTING):
-
-{
-  "success": true,
-  "data": {
-    "reports": {
-      "dnaReport": {
-        "uploadStatus": "",
-        "fileUploaded": "",
-        "snpsRead": "",
-        "sections": [
-          {
-            "title": "Methylation & Detox",
-            "icon": "methylation",
-            "status": "",
-            "statusColor": "",
-            "genes": [],
-            "summary": ""
-          },
-          {
-            "title": "Vitamin Needs",
-            "icon": "vitamins",
-            "status": "",
-            "statusColor": "",
-            "nutrients": [],
-            "summary": ""
-          },
-          {
-            "title": "Inflammation & Immune",
-            "icon": "inflammation",
-            "status": "",
-            "statusColor": "",
-            "markers": [],
-            "summary": "",
-            "detailedExplanation": ""
-          },
-          {
-            "title": "Fitness & Recovery",
-            "icon": "fitness",
-            "status": "",
-            "statusColor": "",
-            "genes": [],
-            "summary": ""
-          },
-          {
-            "title": "Brain & Mood",
-            "icon": "brain",
-            "status": "",
-            "statusColor": "",
-            "genes": [],
-            "summary": ""
-          },
-          {
-            "title": "Cancer Risk",
-            "icon": "cancer",
-            "status": "",
-            "statusColor": "",
-            "genes": [],
-            "summary": ""
-          }
-        ],
-        "aiSuggestion": {
-          "title": "AI Suggestion",
-          "icon": "ai",
-          "description": "",
-          "suggestion": ""
-        }
-      },
-      "bloodWorkReport": {
-        "lastUpload": "",
-        "keyBiomarkers": [],
-        "aiInterpretation": [],
-        "suggestedNextSteps": []
-      },
-      "symptomTracker": {
-        "summary": "",
-        "period": "30 days",
-        "symptoms": [
-          {
-            "name": "",
-            "description": "",
-            "status": "",
-            "statusColor": "",
-            "trendData": []
-          }
-        ]
-      }
-    },
-    "personalizedPlan": {
-      "userName": "${userName}",
-      "subtitle": "Generated from your data and goals",
-      "sections": [
-        {
-          "type": "Supplements",
-          "icon": "supplements",
-          "title": "Recommended Supplements",
-          "subtitle": "Based on your DNA, labs and symptoms, these supplements are recommended to support your current health status.",
-          "items": [],
-          "generalTip": {
-            "icon": "lightbulb",
-            "text": ""
-          }
-        },
-        {
-          "type": "Nutrition",
-          "icon": "nutrition",
-          "title": "Your Nutrition Plan",
-          "subtitle": "Personalized food guidance based on your biology and goals.",
-          "items": []
-        },
-        {
-          "type": "Movement",
-          "icon": "movement",
-          "title": "Your Movement Plan",
-          "subtitle": "Based on your lifestyle, genetics, and goals.",
-          "items": [],
-          "whyRecommended": {
-            "title": "Why was this recommended?",
-            "explanation": ""
-          }
-    },
-    {
-      "type": "Breath work",
-          "icon": "breathwork",
-          "title": "Your Breathwork Plan",
-          "subtitle": "Improve your well-being through focused breathing exercises",
-          "items": [],
-          "whyRecommended": {
-            "title": "Why was this recommended?",
-            "explanation": ""
-          }
-    },
-    {
-      "type": "Sleep",
-          "icon": "sleep",
-          "title": "Your Sleep Plan",
-          "subtitle": "Optimized sleep recommendations for ${userName}.",
-          "items": [],
-          "whyRecommended": {
-            "title": "Why was this recommended?",
-            "explanation": ""
-          }
-        }
-      ]
-    }
-  }
-}
-
-**CRITICAL ANALYSIS TASKS:**
-
-1. **DNA ANALYSIS**: 
-   - Extract genes from dnaReport.markers array
-   - Categorize genes: MTHFR, COMT → Methylation; B vitamins → Vitamin Needs; IL6, TNF → Inflammation; etc.
-   - Determine status based on genetic variants found
-   - Fill genes/nutrients/markers arrays with actual gene names
-   - Create meaningful summaries for each section (minimum 2-3 sentences explaining health implications)
-   - **EXTRACT METADATA**: 
-     - Set "uploadStatus" to "Uploaded" if dnaReport.metadata exists
-     - Set "fileUploaded" to the analysis_date from dnaReport.metadata (format: "Apr 2025")
-     - Set "snpsRead" to the total_markers_found from dnaReport.metadata (format: "1,115,429")
-   - **GENERATE DETAILED AI SUGGESTIONS**:
-     - Create comprehensive description explaining genetic findings and health implications
-     - Provide specific, actionable suggestions based on genetic variants (minimum 3-4 recommendations)
-
-2. **BLOOD WORK ANALYSIS**:
-   - Extract test results from bloodReport.results
-   - Identify key biomarkers (Glucose, Vitamin D, CRP, B12, etc.)
-   - Determine status (Normal/Borderline/High/Low) based on reference ranges
-   - Create detailed interpretations with specific health implications (minimum 2-3 sentences per biomarker)
-   - Generate comprehensive suggested next steps (minimum 4-5 actionable steps)
-   - **EXTRACT METADATA**:
-     - Set "lastUpload" to the report_date from bloodReport.metadata (format: "Apr 5, 2025")
-   - **GENERATE DETAILED INTERPRETATIONS**:
-     - Explain what each biomarker means for health
-     - Provide specific recommendations for improving values
-     - Include lifestyle and supplement suggestions
-
-3. **SYMPTOM ANALYSIS**:
-   - Analyze symptomSummary.logs for trends
-   - Calculate rating changes and determine if symptoms are improving/worsening
-   - Count total symptoms and categorize by trend
-   - Create detailed summary like "You've reported X symptoms over the last 30 days. Y improved, Z unchanged, W worsened."
-   - **GENERATE DETAILED SYMPTOM DATA**:
-     - For each symptom in symptomSummary.logs, create a symptom object with:
-       - "name": symptom name (e.g., "Brain Fog", "Sleep", "Low Energy", "Anxiety", "Bloating")
-       - "description": rating change (e.g., "Rated 4 → 2 last 30 days", "Rated 3 → 1 last 4 weeks")
-       - "status": "Improving", "Unchanged", or "Worsening" based on rating trends
-       - "statusColor": "green" for improving, "gray" for unchanged, "red" for worsening
-       - "trendData": array of rating values over time for trend visualization
-   - **PROVIDE IMPROVEMENT STRATEGIES**:
-     - For each symptom, suggest specific strategies for improvement
-     - Include lifestyle, supplement, and behavioral recommendations
-
-4. **PERSONALIZED RECOMMENDATIONS**:
-   - Generate comprehensive supplements list based on actual deficiencies (DNA + blood work) - minimum 4-5 supplements
-   - Create detailed nutrition advice with specific foods, meal timing, and dietary strategies (minimum 6-8 recommendations)
-   - Design comprehensive movement plan with specific exercises, frequency, intensity, and recovery protocols (minimum 5-6 recommendations)
-   - Suggest detailed breathwork techniques with specific methods, timing, and benefits (minimum 3-4 techniques)
-   - Create comprehensive sleep recommendations with specific protocols, timing, and environmental factors (minimum 5-6 recommendations)
-   - **GENERATE DETAILED EXPLANATIONS**:
-     - For each recommendation, provide comprehensive "Why was this recommended?" explanations
-     - Include scientific rationale, personalization factors, and expected benefits
-     - Minimum 3-4 sentences per explanation
-
-**USER CONTEXT:**
-- Name: ${userName}
-- Age: ${
-        profile.dateOfBirth
-          ? new Date().getFullYear() -
-            new Date(profile.dateOfBirth).getFullYear()
-          : "Unknown"
-      }
-- Gender: ${profile.sexAtBirth || "Unknown"}
-- Goals: ${profile.goals?.join(", ") || "General wellness"}
-- Diet Type: ${profile.dietType || "Standard"}
-- Exercise Level: ${profile.exerciseLevel || "Unknown"}
-- Sleep Quality: ${profile.sleepQuality || "Unknown"}
-
-**DATA TO ANALYZE:**
-
-User profile data:
-${JSON.stringify(profile.toObject())}
-
-DNA report data:
-${JSON.stringify(dnaReport)}
-
-Blood report data:
-${JSON.stringify(bloodReport)}
-
-Symptom tracker logs:
-${JSON.stringify(symptomSummary)}
-
-**RULES:**
-1. Use ONLY the real data provided above for analysis
-2. Fill ALL fields with actual data analysis, not placeholders
-3. Make recommendations PERSONALIZED to this specific user
-4. Return ONLY the JSON object, no extra text
-5. NO DOUBLE NESTING - only one success/data level
-6. If data is missing, use empty arrays/strings but maintain structure
-7. For supplements: include name, brand, form, dosage, frequency, timing, purpose
-8. For nutrition: include specific foods to prioritize/limit, meal guidance, tips
-9. For movement: include recommended activity, frequency, intensity, recovery
-10. For breathwork: include technique, frequency, duration, benefits
-11. For sleep: include sleep window, tips, disruptors to avoid
-12. **CRITICAL**: Fill ALL empty fields with meaningful content based on user data
-13. **CRITICAL**: Generate AI suggestions and interpretations for all sections
-14. **CRITICAL**: Create detailed explanations for "Why was this recommended?"
-15. **CRITICAL**: Provide specific, actionable recommendations for all plan sections
-16. **CRITICAL**: DO NOT use any hardcoded data - generate everything from user's actual data
-17. **CRITICAL**: DO NOT copy existing supplements from profile - suggest NEW supplements based on analysis
-18. **CRITICAL**: Generate your own recommendations based on DNA, blood work, and symptoms analysis
-19. **CRITICAL**: The JSON structure above is ONLY for reference - fill it with your own analysis and recommendations
-20. **CRITICAL**: Provide DETAILED descriptions and explanations (minimum 2-3 sentences each)
-21. **CRITICAL**: Include SPECIFIC recommendations with exact dosages, frequencies, and timing
-22. **CRITICAL**: Generate COMPREHENSIVE explanations for all "Why was this recommended?" sections
-23. **CRITICAL**: Create DETAILED AI interpretations for blood work with specific health implications
-24. **CRITICAL**: Provide THOROUGH symptom analysis with specific improvement strategies
-25. **CRITICAL**: Include MULTIPLE recommendations per section (at least 3-5 items each)`;
+INPUT DATA:
+${JSON.stringify(inputData, null, 2)}`;
 
       if (!openai) throw new Error("OpenAI is not initialized");
 
-      console.log("Sending request to OpenAI...");
-      console.log("User context:", {
-        userName,
-        age: profile.dateOfBirth
-          ? new Date().getFullYear() -
-            new Date(profile.dateOfBirth).getFullYear()
-          : "Unknown",
-      });
+      console.log("[UserService.generatePersonalizedPlan] Sending request to OpenAI with new prompt...");
+      console.log("=================[Prompt]==========================");
+      console.log(prompt);
+      console.log("===================================================");
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o", // Using gpt-4o instead of gpt-5 as it's more reliable
         messages: [
           {
             role: "system",
-            content:
-              "You are a health assistant that returns only valid JSON. Never include double nesting. Always analyze real data and provide personalized recommendations based on the user's actual profile, DNA, blood work, and symptoms.",
+            content: "You are Fitra360's Master Health Integrator. Return ONLY valid JSON matching the exact schema provided. Use only the data provided in the input and preserve all numbers/units exactly."
           },
-          { role: "user", content: prompt },
+          { role: "user", content: prompt }
         ],
         max_completion_tokens: 4000,
         response_format: { type: "json_object" },
+        temperature: 0.1 // Lower temperature for more consistent outputs
       });
 
-      console.log("OpenAI response received");
+      console.log("[UserService.generatePersonalizedPlan] OpenAI response received");
       const responseContent = completion.choices[0].message.content;
-      console.log("Raw response content:", responseContent);
-
+      
       let result;
       try {
-        // First, try to parse the response directly
         result = JSON.parse(responseContent);
-        console.log("Successfully parsed JSON response");
+        console.log("[UserService.generatePersonalizedPlan] Successfully parsed JSON response");
       } catch (parseError) {
-        console.error("Initial JSON parse error:", parseError);
-        console.error(
-          "Response content that failed to parse:",
-          responseContent
-        );
-
+        console.error("[UserService.generatePersonalizedPlan] JSON parse error:", parseError);
+        console.error("Response content that failed to parse:", responseContent.substring(0, 500));
+        
         // Try to repair the JSON using jsonrepair
         try {
           const repaired = jsonrepair(responseContent);
           result = JSON.parse(repaired);
-          console.log("Successfully repaired and parsed JSON with jsonrepair");
+          console.log("[UserService.generatePersonalizedPlan] Successfully repaired and parsed JSON");
         } catch (repairError) {
-          console.error("jsonrepair failed:", repairError);
-          throw new Error(
-            `Failed to parse/repair ChatGPT response: ${
-              repairError.message
-            }. Raw response: ${responseContent.substring(0, 200)}...`
-          );
+          console.error("[UserService.generatePersonalizedPlan] JSON repair failed:", repairError);
+          throw new Error(`Failed to parse OpenAI response: ${repairError.message}`);
         }
       }
 
-      // Validate the result structure and fix double nesting if present
+      // Validate the result structure
       if (!result || typeof result !== "object") {
         throw new Error("Invalid response structure: result is not an object");
       }
 
-      // Check for double nesting and fix it - improved detection
-      if (
-        result.success &&
-        result.data &&
-        result.data.success &&
-        result.data.data
-      ) {
-        console.log("Detected double nesting, fixing...");
-        result = result.data;
-      } else if (result.data && result.data.success && result.data.data) {
-        console.log("Detected nested data structure, fixing...");
-        result = result.data;
-      }
-
-      // Additional validation for the final structure
       if (!result.success || !result.data) {
-        console.error(
-          "Invalid response structure after fixing:",
-          JSON.stringify(result, null, 2)
-        );
-        throw new Error(
-          "Invalid response structure: missing success or data fields after fixing"
-        );
+        console.error("Invalid response structure:", Object.keys(result));
+        throw new Error("Invalid response structure: missing success or data fields");
       }
 
       // Validate that we have the expected sections
-      if (!result.data.reports || !result.data.personalizedPlan) {
-        console.error(
-          "Missing required sections in response:",
-          Object.keys(result.data)
-        );
-        throw new Error(
-          "Invalid response structure: missing reports or personalizedPlan sections"
-        );
+      if (!result.data.scores || !result.data.wellnessPlan) {
+        console.error("Missing required sections in response:", Object.keys(result.data));
+        throw new Error("Invalid response structure: missing scores or wellnessPlan sections");
       }
 
-      console.log(
-        "Returning successful result with structure:",
-        Object.keys(result.data)
-      );
+      console.log("[UserService.generatePersonalizedPlan] Plan generated successfully");
+      console.log("Response structure:", {
+        hasScores: !!result.data.scores,
+        hasFitra360Score: !!result.data.scores?.fitra360Score,
+        hasBiologicalAge: !!result.data.scores?.biologicalAge,
+        hasWellnessPlan: !!result.data.wellnessPlan,
+        supplementsCount: result.data.wellnessPlan?.sections?.supplements?.length || 0
+      });
+
       return result;
     } catch (error) {
-      console.error("Error in generatePersonalizedPlan:", error);
+      console.error("[UserService.generatePersonalizedPlan] Error:", error);
       throw new Error(`Failed to generate personalized plan: ${error.message}`);
     }
   }
@@ -2201,6 +1889,111 @@ ${JSON.stringify(symptomSummary)}
           stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         }
       };
+    }
+  }
+
+  /**
+   * Helper function to gather the 3 required data sources for personalized plan generation
+   * @param {string} userId - User ID
+   * @returns {Object} Combined data object with dnaAnalysis, bloodWorkAnalysis, and userProfile
+   */
+  static async gatherPersonalizedPlanData(userId) {
+    try {
+      console.log(`[UserService.gatherPersonalizedPlanData] Gathering data for userId: ${userId}`);
+      
+      // Get user profile
+      const profile = await UserProfile.findOne({ userId });
+      if (!profile) {
+        throw new Error("User profile not found");
+      }
+
+      // Get user basic info
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Prepare DNA analysis data
+      let dnaAnalysis = {};
+      if (profile.dna && profile.dna.markers && profile.dna.markers.length > 0) {
+        dnaAnalysis = {
+          markers: profile.dna.markers.map(marker => ({
+            rs_number: marker.rs_number,
+            chromosome: marker.chromosome,
+            position: marker.position,
+            allele1: marker.allele1,
+            allele2: marker.allele2
+          })),
+          metadata: profile.dna.metadata || {
+            total_markers_found: profile.dna.markers.length,
+            last_updated: new Date()
+          }
+        };
+        console.log(`[UserService.gatherPersonalizedPlanData] Found ${profile.dna.markers.length} DNA markers`);
+      } else {
+        console.log(`[UserService.gatherPersonalizedPlanData] No DNA data found`);
+      }
+
+      // Prepare blood work analysis data
+      let bloodWorkAnalysis = {};
+      if (profile.bloodReport && profile.bloodReport.analysis) {
+        bloodWorkAnalysis = {
+          analysis: profile.bloodReport.analysis,
+          metadata: profile.bloodReport.metadata || {
+            last_updated: new Date()
+          }
+        };
+        console.log(`[UserService.gatherPersonalizedPlanData] Found blood work analysis`);
+      } else {
+        console.log(`[UserService.gatherPersonalizedPlanData] No blood work data found`);
+      }
+
+      // Prepare user profile onboarding data
+      const userProfile = {
+        // Basic demographics
+        age: profile.dateOfBirth ? new Date().getFullYear() - new Date(profile.dateOfBirth).getFullYear() : null,
+        sexAtBirth: profile.sexAtBirth,
+        height: profile.height,
+        heightUnit: profile.heightUnit,
+        weight: profile.weight,
+        weightUnit: profile.weightUnit,
+        location: profile.location,
+
+        // Lifestyle
+        dietType: profile.dietType,
+        exerciseLevel: profile.exerciseLevel,
+        sleepQuality: profile.sleepQuality,
+        stressLevel: profile.stressLevel,
+        goals: profile.goals,
+
+        // Health info
+        allergies: profile.allergies,
+        foodIntolerances: profile.foodIntolerances,
+        medicalConditions: profile.medicalConditions,
+        currentMedications: profile.currentMedications,
+        supplementsAndMedications: profile.supplementsAndMedications,
+
+        // Body measurements
+        waistCircumference: profile.waistCircumference,
+        chestCircumference: profile.chestCircumference,
+        armCircumference: profile.armCircumference,
+        circumferenceUnit: profile.circumferenceUnit,
+
+        // Recent symptoms/logs (last 30 days)
+        recentSymptoms: profile.dailyLogs ? profile.dailyLogs.slice(-30) : []
+      };
+
+      console.log(`[UserService.gatherPersonalizedPlanData] Successfully gathered all data sources`);
+
+      return {
+        dnaAnalysis,
+        bloodWorkAnalysis,
+        userProfile
+      };
+
+    } catch (error) {
+      console.error('[UserService.gatherPersonalizedPlanData] Error:', error);
+      throw error;
     }
   }
 }
