@@ -374,8 +374,12 @@ class UserService {
 
       // Add isUpdated flag to profileFields to mark profile as updated
       profileFields.isUpdated = true;
+      
+      // Reset personalized plan analysis flag when profile is updated
+      profileFields['personalizedPlan.isAlreadyAnalyzed'] = false;
+      
       console.log(
-        `[UpdateUserAndProfile] Setting isUpdated = true for profile update`
+        `[UpdateUserAndProfile] Setting isUpdated = true and resetting personalizedPlan.isAlreadyAnalyzed = false`
       );
 
       updatedProfile = await UserProfile.findOneAndUpdate(
@@ -752,7 +756,11 @@ class UserService {
 
     // Add isUpdated flag to mark profile as updated
     updateData.isUpdated = true;
-    console.log(`[UpdateUser] Setting isUpdated = true for profile update`);
+    
+    // Reset personalized plan analysis flag when profile is updated
+    updateData['personalizedPlan.isAlreadyAnalyzed'] = false;
+    
+    console.log(`[UpdateUser] Setting isUpdated = true and resetting personalizedPlan.isAlreadyAnalyzed = false`);
 
     // Find the UserProfile by userId and update it
     const updatedProfile = await UserProfile.findOneAndUpdate(
@@ -1074,7 +1082,7 @@ class UserService {
           },
         };
 
-        const saveResult = await DNAService.saveAnalysisData(userId, {
+        const saveResult = await UserService.saveAnalysisData(userId, {
           promptType,
           analysis: { dna_analysis: dnaAnalysisData },
         });
@@ -1541,7 +1549,13 @@ class UserService {
 
           userProfile = await UserProfile.findOneAndUpdate(
             { userId },
-            { $set: { bloodReport: updateData.bloodReport } },
+            { 
+              $set: { 
+                bloodReport: updateData.bloodReport,
+                isUpdated: true,
+                'personalizedPlan.isAlreadyAnalyzed': false // Reset analysis flag due to blood data update
+              } 
+            },
             { new: true, runValidators: true, upsert: false }
           );
           console.log("Blood report updated successfully");
@@ -1552,7 +1566,12 @@ class UserService {
           console.log("Updating DNA analysis...");
           userProfile = await UserProfile.findOneAndUpdate(
             { userId },
-            { $set: { dnaAnalysis: updateData.dnaAnalysis } },
+            { 
+              $set: { 
+                dnaAnalysis: updateData.dnaAnalysis,
+                'personalizedPlan.isAlreadyAnalyzed': false // Reset analysis flag due to DNA update
+              } 
+            },
             { new: true, runValidators: true, upsert: false }
           );
           console.log("DNA analysis updated successfully");
@@ -1573,6 +1592,13 @@ class UserService {
       );
 
       userProfile.isUpdated = true;
+      
+      // Reset personalized plan analysis flag since analysis data has changed
+      if (userProfile.personalizedPlan && userProfile.personalizedPlan.isAlreadyAnalyzed) {
+        console.log(`[SaveAnalysisData] Resetting personalizedPlan.isAlreadyAnalyzed to false due to ${promptType} data change`);
+        userProfile.personalizedPlan.isAlreadyAnalyzed = false;
+      }
+      
       await userProfile.save();
 
       console.log(
@@ -1768,6 +1794,22 @@ class UserService {
     try {
       console.log(`[UserService.generatePersonalizedPlan] Starting plan generation for userId: ${userId}`);
       
+      // First, check if we have a cached result
+      const userProfile = await UserProfile.findOne({ userId });
+      if (!userProfile) {
+        throw new Error("User profile not found");
+      }
+
+      // Check if we already have analyzed results and the flag is set
+      if (userProfile.personalizedPlan?.isAlreadyAnalyzed && userProfile.personalizedPlan?.result) {
+        console.log(`[UserService.generatePersonalizedPlan] Returning cached result for userId: ${userId}`);
+        console.log(`[UserService.generatePersonalizedPlan] Last analyzed at: ${userProfile.personalizedPlan.lastAnalyzedAt}`);
+        
+        return userProfile.personalizedPlan.result;
+      }
+
+      console.log(`[UserService.generatePersonalizedPlan] No cached result found or flag is false, proceeding with new GPT analysis`);
+      
       // Gather the 3 required data sources
       const planData = await UserService.gatherPersonalizedPlanData(userId);
       
@@ -1851,6 +1893,25 @@ ${JSON.stringify(inputData, null, 2)}`;
         hasWellnessPlan: !!result.data.wellnessPlan,
         supplementsCount: result.data.wellnessPlan?.sections?.supplements?.length || 0
       });
+
+      // Store the result in the user profile and set the flag
+      try {
+        await UserProfile.findOneAndUpdate(
+          { userId },
+          {
+            $set: {
+              'personalizedPlan.result': result,
+              'personalizedPlan.lastAnalyzedAt': new Date(),
+              'personalizedPlan.isAlreadyAnalyzed': true
+            }
+          },
+          { upsert: false, new: true }
+        );
+        console.log("[UserService.generatePersonalizedPlan] Successfully stored result in user profile");
+      } catch (saveError) {
+        console.error("[UserService.generatePersonalizedPlan] Error saving result to user profile:", saveError);
+        // Don't throw here as we still want to return the result to the user
+      }
 
       return result;
     } catch (error) {

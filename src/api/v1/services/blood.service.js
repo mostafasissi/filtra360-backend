@@ -136,6 +136,13 @@ class BloodService {
 
       // Save to database
       profile.bloodReport = structuredBloodData;
+      
+      // Reset personalized plan analysis flag since blood data has changed
+      if (profile.personalizedPlan && profile.personalizedPlan.isAlreadyAnalyzed) {
+        console.log(`[BloodService.saveBloodData] Resetting personalizedPlan.isAlreadyAnalyzed to false due to blood data change`);
+        profile.personalizedPlan.isAlreadyAnalyzed = false;
+      }
+      
       await profile.save();
 
       console.log(`[BloodService.saveBloodData] ✅ Blood work data saved successfully`);

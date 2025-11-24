@@ -320,6 +320,13 @@ const userProfileSchema = new mongoose.Schema(
             result: { type: Object }, // Store the dashboard summary/result
             lastAnalyzedAt: { type: Date }
         },
+
+        // Personalized plan storage and analysis control
+        personalizedPlan: {
+            result: { type: Object }, // Store the complete GPT analysis result
+            lastAnalyzedAt: { type: Date },
+            isAlreadyAnalyzed: { type: Boolean, default: false } // Flag to control GPT calls
+        },
         
         // Track if profile has been updated since last dashboard analysis
         isUpdated: {
@@ -362,6 +369,13 @@ userProfileSchema.pre('save', function (next) {
         console.log(`[UserProfile] Profile updated for userId: ${this.userId}, setting isUpdated = true`);
         console.log(`[UserProfile] Previous isUpdated value: ${this.isUpdated}`);
         this.isUpdated = true;
+        
+        // Reset personalized plan analysis flag when profile is modified
+        if (this.personalizedPlan && this.personalizedPlan.isAlreadyAnalyzed) {
+            console.log(`[UserProfile] Profile modified, resetting personalizedPlan.isAlreadyAnalyzed to false`);
+            this.personalizedPlan.isAlreadyAnalyzed = false;
+        }
+        
         console.log(`[UserProfile] New isUpdated value: ${this.isUpdated}`);
     } else {
         console.log(`[UserProfile] New profile created for userId: ${this.userId}, isUpdated remains: ${this.isUpdated}`);

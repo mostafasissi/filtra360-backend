@@ -597,7 +597,8 @@ ALGORITHM (PER TRAIT)
               total_markers_found: updatedMarkers.length,
               last_updated: new Date()
             },
-            isUpdated: true // Mark profile as updated
+            isUpdated: true, // Mark profile as updated
+            'personalizedPlan.isAlreadyAnalyzed': false // Reset analysis flag due to DNA update
           }
         },
         { new: true, runValidators: true }
@@ -642,7 +643,10 @@ ALGORITHM (PER TRAIT)
         { userId },
         {
           $unset: { dna: 1 },
-          $set: { isUpdated: true }
+          $set: { 
+            isUpdated: true,
+            'personalizedPlan.isAlreadyAnalyzed': false // Reset analysis flag due to DNA deletion
+          }
         },
         { new: true, runValidators: true }
       );
@@ -715,6 +719,13 @@ ALGORITHM (PER TRAIT)
       console.log(`[DNAService.SaveDnaData] Previous isUpdated value: ${userProfile.isUpdated}`);
       
       userProfile.isUpdated = true;
+      
+      // Reset personalized plan analysis flag since DNA data has changed
+      if (userProfile.personalizedPlan && userProfile.personalizedPlan.isAlreadyAnalyzed) {
+        console.log(`[DNAService.SaveDnaData] Resetting personalizedPlan.isAlreadyAnalyzed to false due to DNA data change`);
+        userProfile.personalizedPlan.isAlreadyAnalyzed = false;
+      }
+      
       await userProfile.save();
       
       console.log(`[DNAService.SaveDnaData] New isUpdated value: ${userProfile.isUpdated}`);
